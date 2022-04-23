@@ -71,10 +71,8 @@ public class HeapPage implements Page {
     /** Retrieve the number of tuples on this page.
         @return the number of tuples on this page
     */
-    private int getNumTuples() {        
-        // some code goes here
-        return 0;
-
+    private int getNumTuples() {
+        return (int)Math.floor(BufferPool.getPageSize()*8 /(td.getSize()*8 + 1));
     }
 
     /**
@@ -82,10 +80,7 @@ public class HeapPage implements Page {
      * @return the number of bytes in the header of a page in a HeapFile with each tuple occupying tupleSize bytes
      */
     private int getHeaderSize() {        
-        
-        // some code goes here
-        return 0;
-                 
+        return (int)Math.ceil(this.numSlots/8);
     }
     
     /** Return a view of this page before it was modified
@@ -117,8 +112,7 @@ public class HeapPage implements Page {
      * @return the PageId associated with this page.
      */
     public HeapPageId getId() {
-    // some code goes here
-    throw new UnsupportedOperationException("implement this");
+        return pid;
     }
 
     /**
@@ -287,16 +281,34 @@ public class HeapPage implements Page {
      * Returns the number of empty slots on this page.
      */
     public int getNumEmptySlots() {
-        // some code goes here
-        return 0;
+        int zeros = 0;
+        for(int i = 0 ; i < header.length; i++){
+            byte tmp = header[i];
+            int validBitNum = 8;
+            if(i == header.length - 1 && numSlots%8 != 0){
+                validBitNum = numSlots%8;
+            }
+            for(int j = 0 ; j < validBitNum ; j++){
+                if( ((tmp >> j)&1) == 0 ){
+                    zeros ++;
+                }
+            }
+        }
+        return zeros;
     }
 
     /**
      * Returns true if associated slot on this page is filled.
      */
     public boolean isSlotUsed(int i) {
-        // some code goes here
-        return false;
+        int byteNo = i/8;
+        byte b = header[byteNo];
+        // header[] byte数组表示的slot情况示意图如下
+        // [7 6 5 4 3 2 1 0] ,[ 15 14 13 12 11 10 9 8]
+        // 找到第i/8个byte的右起(i%8)位
+        int bitNo = i % 8;
+        int used = (b >> bitNo) & 1;
+        return used == 1;
     }
 
     /**
