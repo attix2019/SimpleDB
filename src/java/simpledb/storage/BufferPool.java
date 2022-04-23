@@ -76,7 +76,7 @@ public class BufferPool {
      * @param perm the requested permissions on the page
      */
     public  Page getPage(TransactionId tid, PageId pid, Permissions perm)
-            throws TransactionAbortedException, DbException, IOException {
+            throws TransactionAbortedException, DbException {
         Page page = null;
         if(pages.containsKey(pid)){
             return pages.get(pid);
