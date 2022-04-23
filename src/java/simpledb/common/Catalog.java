@@ -23,6 +23,14 @@ import java.util.concurrent.ConcurrentHashMap;
  */
 public class Catalog {
 
+    private Map<Integer, String> id2Name = new HashMap();
+
+    private Map<String, Integer> name2Id = new HashMap();
+
+    private Map<Integer, String> id2PrimaryKey = new HashMap();
+
+    private Map<Integer, DbFile> id2DbFile = new HashMap();
+
     /**
      * Constructor.
      * Creates a new, empty catalog.
@@ -41,7 +49,11 @@ public class Catalog {
      * @param pkeyField the name of the primary key field
      */
     public void addTable(DbFile file, String name, String pkeyField) {
-        // some code goes here
+        int id = file.getId();
+        id2DbFile.put(id, file);
+        id2Name.put(id, name);
+        id2PrimaryKey.put(id, pkeyField);
+        name2Id.put(name, id);
     }
 
     public void addTable(DbFile file, String name) {
@@ -64,8 +76,10 @@ public class Catalog {
      * @throws NoSuchElementException if the table doesn't exist
      */
     public int getTableId(String name) throws NoSuchElementException {
-        // some code goes here
-        return 0;
+        if(!name2Id.containsKey((name))){
+            throw new NoSuchElementException();
+        }
+        return name2Id.get(name);
     }
 
     /**
@@ -75,8 +89,10 @@ public class Catalog {
      * @throws NoSuchElementException if the table doesn't exist
      */
     public TupleDesc getTupleDesc(int tableid) throws NoSuchElementException {
-        // some code goes here
-        return null;
+        if(!id2DbFile.containsKey(tableid)){
+            throw new NoSuchElementException();
+        }
+        return id2DbFile.get(tableid).getTupleDesc();
     }
 
     /**
@@ -86,13 +102,17 @@ public class Catalog {
      *     function passed to addTable
      */
     public DbFile getDatabaseFile(int tableid) throws NoSuchElementException {
-        // some code goes here
-        return null;
+        if(!id2DbFile.containsKey(tableid)){
+            return null;
+        }
+        return id2DbFile.get(tableid);
     }
 
     public String getPrimaryKey(int tableid) {
-        // some code goes here
-        return null;
+        if(!id2PrimaryKey.containsKey(tableid)){
+            return null;
+        }
+        return id2PrimaryKey.get(tableid);
     }
 
     public Iterator<Integer> tableIdIterator() {
@@ -101,8 +121,10 @@ public class Catalog {
     }
 
     public String getTableName(int id) {
-        // some code goes here
-        return null;
+        if(!id2Name.containsKey(id)){
+            return null;
+        }
+        return id2Name.get(id);
     }
     
     /** Delete all tables from the catalog */
