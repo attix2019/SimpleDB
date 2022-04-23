@@ -1,9 +1,6 @@
 package simpledb.storage;
 
-import simpledb.common.Database;
-import simpledb.common.DbException;
-import simpledb.common.Debug;
-import simpledb.common.Permissions;
+import simpledb.common.*;
 import simpledb.transaction.TransactionAbortedException;
 import simpledb.transaction.TransactionId;
 
@@ -72,8 +69,19 @@ public class HeapFile implements DbFile {
 
     // see DbFile.java for javadocs
     public Page readPage(PageId pid) {
-        // some code goes here
-        return null;
+        int pageNo = pid.getPageNumber();
+        byte[] readContent = new byte[BufferPool.getPageSize()];
+        Page page = null;
+        try{
+            RandomAccessFile file = new RandomAccessFile(this.file, "r");
+            file.read(readContent, pageNo * BufferPool.getPageSize(), BufferPool.getPageSize() );
+            page = new HeapPage((HeapPageId) pid, readContent);
+        } catch (FileNotFoundException e) {
+            e.printStackTrace();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        return page;
     }
 
     // see DbFile.java for javadocs
@@ -86,8 +94,8 @@ public class HeapFile implements DbFile {
      * Returns the number of pages in this HeapFile.
      */
     public int numPages() {
-        // some code goes here
-        return 0;
+        int size = (int)this.file.length();
+        return (int)Math.ceil((double) size/BufferPool.getPageSize());
     }
 
     // see DbFile.java for javadocs
