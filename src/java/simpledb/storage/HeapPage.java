@@ -324,8 +324,24 @@ public class HeapPage implements Page {
      * (note that this iterator shouldn't return tuples in empty slots!)
      */
     public Iterator<Tuple> iterator() {
-        // some code goes here
-        return null;
+        Iterator<Tuple> it = new Iterator<Tuple>() {
+            private int tupleNo = 0;
+
+            @Override
+            public boolean hasNext() {
+                while(tupleNo < tuples.length && tuples[tupleNo] == null){
+                    tupleNo ++;
+                }
+                return tupleNo < tuples.length;
+            }
+
+            @Override
+            public Tuple next() {
+                Tuple tuple = tuples[tupleNo++];
+                return tuple;
+            }
+        };
+        return it;
     }
 
 }
