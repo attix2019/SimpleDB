@@ -33,7 +33,7 @@ public class BufferPool {
     constructor instead. */
     public static final int DEFAULT_PAGES = 50;
 
-    private Map<Integer, HeapPage> pages = new HashMap();
+    private Map<PageId, Page> pages = new HashMap();
 
     private int numPages;
 
@@ -86,6 +86,7 @@ public class BufferPool {
         }
         try{
             page = Database.getCatalog().getDatabaseFile(pid.getTableId()).readPage(pid);
+            pages.put(pid, page);
         } catch (IOException e) {
             e.printStackTrace();
         } catch (NoSuchElementException e) {
