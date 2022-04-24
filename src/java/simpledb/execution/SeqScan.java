@@ -28,7 +28,7 @@ public class SeqScan implements OpIterator {
 
     private String tableAlias;
 
-    private HeapFile.HeapFileIteraor heapFileIteraor;
+    private DbFileIterator dbFileIterator;
 
     /**
      * Creates a sequential scan over the specified table as a part of the
@@ -91,7 +91,9 @@ public class SeqScan implements OpIterator {
     }
 
     public void open() throws DbException, TransactionAbortedException {
-        heapFileIteraor.open();
+
+        dbFileIterator = Database.getCatalog().getDatabaseFile(tableId).iterator(transactionId);
+        dbFileIterator.open();
     }
 
     /**
@@ -117,20 +119,20 @@ public class SeqScan implements OpIterator {
     }
 
     public boolean hasNext() throws TransactionAbortedException, DbException {
-        return heapFileIteraor.hasNext();
+        return dbFileIterator.hasNext();
     }
 
     public Tuple next() throws NoSuchElementException,
             TransactionAbortedException, DbException {
-        return heapFileIteraor.next();
+        return dbFileIterator.next();
     }
 
     public void close() {
-        heapFileIteraor.close();
+        dbFileIterator.close();
     }
 
     public void rewind() throws DbException, NoSuchElementException,
             TransactionAbortedException {
-        heapFileIteraor.rewind();
+        dbFileIterator.rewind();
     }
 }
