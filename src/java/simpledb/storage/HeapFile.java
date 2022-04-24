@@ -4,6 +4,7 @@ import simpledb.common.*;
 import simpledb.transaction.TransactionAbortedException;
 import simpledb.transaction.TransactionId;
 
+import javax.xml.crypto.Data;
 import java.io.*;
 import java.util.*;
 
@@ -116,9 +117,70 @@ public class HeapFile implements DbFile {
 
     // see DbFile.java for javadocs
     public DbFileIterator iterator(TransactionId tid) {
-        // some code goes here
-        return null;
+        return new HeapFileIteraor(tid);
     }
 
+    public class HeapFileIteraor implements DbFileIterator{
+
+        public HeapFileIteraor(TransactionId tid){
+            this.transactionId = tid;
+        }
+
+        int curPageNo = -1;
+        TransactionId transactionId;
+        HeapPage curPage;
+        Iterator<Tuple> tupleIt;
+
+        @Override
+        public void open() throws DbException, TransactionAbortedException {
+            curPageNo = 0;
+            HeapPageId heapPageId = new HeapPageId(id, curPageNo);
+            curPage = (HeapPage)Database.getBufferPool().getPage(transactionId, heapPageId, Permissions.READ_ONLY);
+            tupleIt = curPage.iterator();
+        }
+
+        @Override
+        public boolean hasNext() throws DbException, TransactionAbortedException {
+            if(curPageNo < 0){
+                return false;
+            }
+            while(curPageNo < numPages()){
+                if(tupleIt.hasNext()){
+                    return true;
+                }
+                curPageNo++;
+                if(curPageNo >= numPages()){
+                    return false;
+                }
+                HeapPageId heapPageId = new HeapPageId(id, curPageNo);
+                curPage = (HeapPage)Database.getBufferPool().getPage(transactionId, heapPageId, Permissions.READ_ONLY);
+                tupleIt = curPage.iterator();
+            }
+            return false;
+        }
+
+        @Override
+        public Tuple next() throws DbException, TransactionAbortedException, NoSuchElementException {
+            if(curPageNo < 0){
+                throw new NoSuchElementException("iterator not open() yet");
+            }
+            return tupleIt.next();
+        }
+
+        @Override
+        public void rewind() throws DbException, TransactionAbortedException {
+            curPageNo = 0;
+            HeapPageId heapPageId = new HeapPageId(id, curPageNo);
+            curPage = (HeapPage)Database.getBufferPool().getPage(transactionId, heapPageId, Permissions.READ_ONLY);
+            tupleIt = curPage.iterator();
+        }
+
+        @Override
+        public void close() {
+            curPageNo = -1;
+            curPage = null;
+            tupleIt = null;
+        }
+    }
 }
 
