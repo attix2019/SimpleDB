@@ -117,10 +117,11 @@ public class Join extends Operator {
                 }
             }finally {
                 if(!children[1].hasNext()){
-                    if(!children[0].hasNext()){
-                        return null;
+                    if( children[0].hasNext()){
+                        curOutterTuple = children[0].next();
+                    }else{
+                        curOutterTuple = null;
                     }
-                    curOutterTuple = children[0].next();
                     children[1].rewind();
                 }
             }
