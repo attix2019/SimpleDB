@@ -91,7 +91,6 @@ public class SeqScan implements OpIterator {
     }
 
     public void open() throws DbException, TransactionAbortedException {
-
         dbFileIterator = Database.getCatalog().getDatabaseFile(tableId).iterator(transactionId);
         dbFileIterator.open();
     }
@@ -119,20 +118,32 @@ public class SeqScan implements OpIterator {
     }
 
     public boolean hasNext() throws TransactionAbortedException, DbException {
+        if(dbFileIterator == null) {
+            throw new IllegalStateException();
+        }
         return dbFileIterator.hasNext();
     }
 
     public Tuple next() throws NoSuchElementException,
             TransactionAbortedException, DbException {
+        if(dbFileIterator == null) {
+            throw new IllegalStateException();
+        }
         return dbFileIterator.next();
     }
 
     public void close() {
+        if(dbFileIterator == null) {
+            throw new IllegalStateException();
+        }
         dbFileIterator.close();
     }
 
     public void rewind() throws DbException, NoSuchElementException,
             TransactionAbortedException {
+        if(dbFileIterator == null) {
+            throw new IllegalStateException();
+        }
         dbFileIterator.rewind();
     }
 }
