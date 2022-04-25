@@ -108,8 +108,7 @@ public class Join extends Operator {
         if(curOutterTuple == null && children[0].hasNext()){
             curOutterTuple = children[0].next();
         }
-        if(curOutterTuple == null) return null;
-        while(children[1].hasNext()){
+        while(curOutterTuple != null && children[1].hasNext()){
             Tuple tuple2 = children[1].next();
             try{
                 if(joinPredicate.filter(curOutterTuple, tuple2)){
