@@ -1,7 +1,16 @@
 package simpledb.execution;
 
+import simpledb.common.DbException;
 import simpledb.common.Type;
+import simpledb.storage.Field;
+import simpledb.storage.IntField;
 import simpledb.storage.Tuple;
+import simpledb.storage.TupleDesc;
+import simpledb.transaction.TransactionAbortedException;
+
+import java.util.HashMap;
+import java.util.Map;
+import java.util.NoSuchElementException;
 
 /**
  * Knows how to compute some aggregate over a set of StringFields.
@@ -9,6 +18,20 @@ import simpledb.storage.Tuple;
 public class StringAggregator implements Aggregator {
 
     private static final long serialVersionUID = 1L;
+
+    private int gbfield;
+
+    private Type gbfieldType;
+
+    private int afield;
+
+    private Op what;
+
+    private Map<Field, Integer> result;
+
+    private static final Field PLACEHOLDER = new IntField(0);
+
+    private Field[] traverseHelper;
 
     /**
      * Aggregate constructor
@@ -20,7 +43,17 @@ public class StringAggregator implements Aggregator {
      */
 
     public StringAggregator(int gbfield, Type gbfieldtype, int afield, Op what) {
-        // some code goes here
+        if(what != Op.COUNT){
+            throw new IllegalArgumentException();
+        }
+        this.gbfield = gbfield;
+        this.gbfieldType = gbfieldtype;
+        this.afield = afield;
+        this.what = what;
+        result = new HashMap();
+        if(gbfield == NO_GROUPING){
+            result.put(PLACEHOLDER,0);
+        }
     }
 
     /**
@@ -28,7 +61,19 @@ public class StringAggregator implements Aggregator {
      * @param tup the Tuple containing an aggregate field and a group-by field
      */
     public void mergeTupleIntoGroup(Tuple tup) {
-        // some code goes here
+        if(gbfield == NO_GROUPING){
+            int oldValue = result.get(PLACEHOLDER);
+            result.put(PLACEHOLDER, oldValue + 1);
+            return;
+        }
+        Field gbfieldValue =  tup.getField(gbfield);
+        if(result.containsKey(gbfieldValue)){
+            int oldValue = result.get(gbfieldValue);
+            result.put(gbfieldValue, oldValue + 1);
+        }else{
+            result.put(gbfieldValue, 1);
+            traverseHelper = result.keySet().toArray(new Field[0]);
+        }
     }
 
     /**
@@ -40,8 +85,68 @@ public class StringAggregator implements Aggregator {
      *   aggregate specified in the constructor.
      */
     public OpIterator iterator() {
-        // some code goes here
-        throw new UnsupportedOperationException("please implement me for lab2");
+        return new OpIterator() {
+
+            boolean isOpen = false;
+            int i = 0;
+            TupleDesc td = (gbfield == NO_GROUPING)?
+                    new TupleDesc(new Type[]{Type.INT_TYPE})
+                    :new TupleDesc(new Type[]{gbfieldType, Type.INT_TYPE});
+
+            @Override
+            public void open() throws DbException, TransactionAbortedException {
+                isOpen = true;
+            }
+
+            @Override
+            public boolean hasNext() throws DbException, TransactionAbortedException {
+                if(!isOpen){
+                    throw new IllegalStateException();
+                }
+                return i < traverseHelper.length;
+            }
+
+            @Override
+            public Tuple next() throws DbException, TransactionAbortedException, NoSuchElementException {
+                if(!isOpen){
+                    throw new IllegalStateException();
+                }
+                if(i >= traverseHelper.length){
+                    throw new NoSuchElementException();
+                }
+                int aggregateValue = result.get(traverseHelper[i]);
+                Tuple ans = new Tuple(td);
+                if(gbfield == NO_GROUPING){
+                    ans.setField(0, new IntField(aggregateValue) );
+                }else{
+                    ans.setField(0, traverseHelper[i] );
+                    ans.setField(1,  new IntField(aggregateValue));
+                }
+                i++;
+                return ans;
+            }
+
+            @Override
+            public void rewind() throws DbException, TransactionAbortedException {
+                if(!isOpen){
+                    throw new IllegalStateException();
+                }
+                i = 0;
+            }
+
+            @Override
+            public TupleDesc getTupleDesc() {
+                return td;
+            }
+
+            @Override
+            public void close() {
+                if(!isOpen){
+                    throw new IllegalStateException();
+                }
+                isOpen = false;
+            }
+        };
     }
 
 }

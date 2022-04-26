@@ -121,6 +121,7 @@ public class IntegerAggregator implements Aggregator {
             }else if(what == Op.MAX){
                 result.put(gbfieldValue, aFieldValue.getValue());
             }
+            traverseHelper = result.keySet().toArray(new Field[0]);
         }
     }
 
@@ -133,7 +134,6 @@ public class IntegerAggregator implements Aggregator {
      *         the constructor.
      */
     public OpIterator iterator() {
-        traverseHelper = result.keySet().toArray(new Field[0]);
 
         return new OpIterator() {
             int i = 0;
