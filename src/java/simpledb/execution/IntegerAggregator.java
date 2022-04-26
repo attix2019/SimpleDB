@@ -34,6 +34,8 @@ public class IntegerAggregator implements Aggregator {
 
     private Field[] traverseHelper;
 
+    private static final Field PLACEHOLDER = new IntField(0);
+
     /**
      * Aggregate constructor
      * 
@@ -68,11 +70,27 @@ public class IntegerAggregator implements Aggregator {
      *            the Tuple containing an aggregate field and a group-by field
      */
     public void mergeTupleIntoGroup(Tuple tup) {
-        if(gbfield == NO_GROUPING){
-
-        }
-        Field gbfieldValue =  tup.getField(gbfield);
+        Field gbfieldValue;
         IntField aFieldValue = (IntField)tup.getField(afield);
+        if(gbfield == NO_GROUPING){
+            result.put(PLACEHOLDER,0);
+            int oldValue = result.get(PLACEHOLDER);
+            if(what == Op.COUNT){
+                result.put(PLACEHOLDER, oldValue + 1);
+            }else if(what == Op.SUM){
+                result.put(PLACEHOLDER, oldValue + aFieldValue.getValue());
+            }else if(what == Op.AVG){
+                int oldCount = avgHelper.getOrDefault(PLACEHOLDER,0);
+                result.put(PLACEHOLDER, (oldValue * oldCount + aFieldValue.getValue())/(oldCount + 1));
+                avgHelper.put(PLACEHOLDER, oldCount + 1);
+            }else if(what == Op.MIN){
+                result.put(PLACEHOLDER, Math.min(oldValue, aFieldValue.getValue()));
+            }else if(what == Op.MAX){
+                result.put(PLACEHOLDER, Math.max(oldValue, aFieldValue.getValue()));
+            }
+            return;
+        }
+        gbfieldValue =  tup.getField(gbfield);
         if(result.containsKey(gbfieldValue)){
             int oldValue = result.get(gbfieldValue);
             if(what == Op.COUNT){
@@ -118,7 +136,9 @@ public class IntegerAggregator implements Aggregator {
         return new OpIterator() {
             int i = 0;
             boolean isOpen = false;
-            TupleDesc td = new TupleDesc(new Type[]{gbfieldType, Type.INT_TYPE});
+            TupleDesc td = (gbfield == NO_GROUPING)?
+                new TupleDesc(new Type[]{Type.INT_TYPE})
+                :new TupleDesc(new Type[]{gbfieldType, Type.INT_TYPE});
 
             @Override
             public void open() throws DbException, TransactionAbortedException {
@@ -143,10 +163,10 @@ public class IntegerAggregator implements Aggregator {
                 }
                 int aggregateValue = result.get(traverseHelper[i]);
                 Tuple ans = null;
+                ans = new Tuple(td);
                 if(gbfield == NO_GROUPING){
-
+                    ans.setField(0, new IntField(aggregateValue) );
                 }else{
-                    ans = new Tuple(td);
                     ans.setField(0, traverseHelper[i] );
                     ans.setField(1,  new IntField(aggregateValue));
                 }
