@@ -9,9 +9,7 @@ import simpledb.storage.TupleDesc;
 import simpledb.transaction.TransactionAbortedException;
 
 import java.awt.geom.RectangularShape;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.NoSuchElementException;
+import java.util.*;
 
 /**
  * Knows how to compute some aggregate over a set of IntFields.
@@ -30,9 +28,13 @@ public class IntegerAggregator implements Aggregator {
 
     private Map<Field, Integer> result;
 
-    private Map<Field, Integer> avgHelper;
+    private Map<Field, Integer> avgSum;
 
-    private Field[] traverseHelper;
+    private Map<Field, Integer> avgCount;
+
+//    private Field[] traverseHelper;
+
+    private List<Field> keyList = new LinkedList();
 
     private static final Field PLACEHOLDER = new IntField(0);
 
@@ -58,9 +60,11 @@ public class IntegerAggregator implements Aggregator {
         this.what = what;
         result = new HashMap();
         if(what == Op.AVG){
-            avgHelper = new HashMap();
+            avgSum = new HashMap();
+            avgCount = new HashMap();
         }
         if(gbfield == NO_GROUPING){
+            keyList.add(PLACEHOLDER);
             result.put(PLACEHOLDER,0);
         }
     }
@@ -82,15 +86,16 @@ public class IntegerAggregator implements Aggregator {
             }else if(what == Op.SUM){
                 result.put(PLACEHOLDER, oldValue + aFieldValue.getValue());
             }else if(what == Op.AVG){
-                int oldCount = avgHelper.getOrDefault(PLACEHOLDER,0);
-                result.put(PLACEHOLDER, (oldValue * oldCount + aFieldValue.getValue())/(oldCount + 1));
-                avgHelper.put(PLACEHOLDER, oldCount + 1);
+                int newSum = avgSum.getOrDefault(PLACEHOLDER, 0) + aFieldValue.getValue();
+                avgSum.put(PLACEHOLDER, newSum);
+                int newCount = avgCount.getOrDefault(PLACEHOLDER, 0) +1;
+                avgCount.put(PLACEHOLDER, newCount);
+                result.put(PLACEHOLDER, newSum/newCount );
             }else if(what == Op.MIN){
                 result.put(PLACEHOLDER, Math.min(oldValue, aFieldValue.getValue()));
             }else if(what == Op.MAX){
                 result.put(PLACEHOLDER, Math.max(oldValue, aFieldValue.getValue()));
             }
-            traverseHelper = result.keySet().toArray(new Field[0]);
             return;
         }
         gbfieldValue =  tup.getField(gbfield);
@@ -101,9 +106,11 @@ public class IntegerAggregator implements Aggregator {
             }else if(what == Op.SUM){
                 result.put(gbfieldValue, oldValue + aFieldValue.getValue());
             }else if(what == Op.AVG){
-                int oldCount = avgHelper.get(gbfieldValue);
-                result.put(gbfieldValue, (oldValue * oldCount + aFieldValue.getValue())/(oldCount + 1));
-                avgHelper.put(gbfieldValue, oldCount + 1);
+                int newSum = avgSum.getOrDefault(gbfieldValue, 0) + aFieldValue.getValue();
+                avgSum.put(gbfieldValue, newSum);
+                int newCount = avgCount.getOrDefault(gbfieldValue, 0) +1;
+                avgCount.put(gbfieldValue, newCount);
+                result.put(gbfieldValue, newSum/newCount );
             }else if(what == Op.MIN){
                 result.put(gbfieldValue, Math.min(oldValue, aFieldValue.getValue()));
             }else if(what == Op.MAX){
@@ -116,13 +123,14 @@ public class IntegerAggregator implements Aggregator {
                 result.put(gbfieldValue, aFieldValue.getValue());
             }else if(what == Op.AVG){
                 result.put(gbfieldValue,  aFieldValue.getValue());
-                avgHelper.put(gbfieldValue, 1);
+                avgSum.put(gbfieldValue, aFieldValue.getValue());
+                avgCount.put(gbfieldValue, 1);
             }else if(what == Op.MIN){
                 result.put(gbfieldValue, aFieldValue.getValue());
             }else if(what == Op.MAX){
                 result.put(gbfieldValue, aFieldValue.getValue());
             }
-            traverseHelper = result.keySet().toArray(new Field[0]);
+            keyList.add(gbfieldValue);
         }
     }
 
@@ -153,7 +161,7 @@ public class IntegerAggregator implements Aggregator {
                 if(!isOpen){
                     throw new IllegalStateException();
                 }
-                return i < result.size();
+                return i < keyList.size();
             }
 
             @Override
@@ -161,16 +169,16 @@ public class IntegerAggregator implements Aggregator {
                 if(!isOpen){
                     throw new IllegalStateException();
                 }
-                if(i >= traverseHelper.length){
+                if(i >= keyList.size()){
                     throw new NoSuchElementException();
                 }
-                int aggregateValue = result.get(traverseHelper[i]);
+                int aggregateValue = result.get(keyList.get(i));
                 Tuple ans = null;
                 ans = new Tuple(td);
                 if(gbfield == NO_GROUPING){
                     ans.setField(0, new IntField(aggregateValue) );
                 }else{
-                    ans.setField(0, traverseHelper[i] );
+                    ans.setField(0, keyList.get(i) );
                     ans.setField(1,  new IntField(aggregateValue));
                 }
                 i++;
@@ -195,6 +203,9 @@ public class IntegerAggregator implements Aggregator {
                 if(!isOpen){
                     throw new IllegalStateException();
                 }
+                avgSum = null;
+                avgCount = null;
+                result = null;
                 isOpen = false;
             }
         };
