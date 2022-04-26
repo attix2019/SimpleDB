@@ -60,6 +60,9 @@ public class IntegerAggregator implements Aggregator {
         if(what == Op.AVG){
             avgHelper = new HashMap();
         }
+        if(gbfield == NO_GROUPING){
+            result.put(PLACEHOLDER,0);
+        }
     }
 
     /**
@@ -73,7 +76,6 @@ public class IntegerAggregator implements Aggregator {
         Field gbfieldValue;
         IntField aFieldValue = (IntField)tup.getField(afield);
         if(gbfield == NO_GROUPING){
-            result.put(PLACEHOLDER,0);
             int oldValue = result.get(PLACEHOLDER);
             if(what == Op.COUNT){
                 result.put(PLACEHOLDER, oldValue + 1);
@@ -184,7 +186,7 @@ public class IntegerAggregator implements Aggregator {
 
             @Override
             public TupleDesc getTupleDesc() {
-                return null;
+                return td;
             }
 
             @Override
