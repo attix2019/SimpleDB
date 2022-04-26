@@ -90,6 +90,7 @@ public class IntegerAggregator implements Aggregator {
             }else if(what == Op.MAX){
                 result.put(PLACEHOLDER, Math.max(oldValue, aFieldValue.getValue()));
             }
+            traverseHelper = result.keySet().toArray(new Field[0]);
             return;
         }
         gbfieldValue =  tup.getField(gbfield);

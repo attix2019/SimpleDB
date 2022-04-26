@@ -20,7 +20,7 @@ public class Aggregate extends Operator {
 
     private int aggreateFiledNo;
 
-    private int groupByFieldNo = Aggregator.NO_GROUPING-1;
+    private int groupByFieldNo = Aggregator.NO_GROUPING;
 
     private OpIterator[] children;
 
@@ -53,7 +53,9 @@ public class Aggregate extends Operator {
         aggreateFiledNo = afield;
         groupByFieldNo = gfield;
         this.aop = aop;
-        gbFieldType = child.getTupleDesc().getFieldType(groupByFieldNo);
+        if(groupByFieldNo != Aggregator.NO_GROUPING){
+            gbFieldType = child.getTupleDesc().getFieldType(groupByFieldNo);
+        }
         aFieldType = child.getTupleDesc().getFieldType(afield);
     }
 

@@ -64,6 +64,7 @@ public class StringAggregator implements Aggregator {
         if(gbfield == NO_GROUPING){
             int oldValue = result.get(PLACEHOLDER);
             result.put(PLACEHOLDER, oldValue + 1);
+            traverseHelper = result.keySet().toArray(new Field[0]);
             return;
         }
         Field gbfieldValue =  tup.getField(gbfield);
