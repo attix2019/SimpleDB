@@ -1,7 +1,17 @@
 package simpledb.execution;
 
+import simpledb.common.DbException;
 import simpledb.common.Type;
+import simpledb.storage.Field;
+import simpledb.storage.IntField;
 import simpledb.storage.Tuple;
+import simpledb.storage.TupleDesc;
+import simpledb.transaction.TransactionAbortedException;
+
+import java.awt.geom.RectangularShape;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.NoSuchElementException;
 
 /**
  * Knows how to compute some aggregate over a set of IntFields.
@@ -9,6 +19,20 @@ import simpledb.storage.Tuple;
 public class IntegerAggregator implements Aggregator {
 
     private static final long serialVersionUID = 1L;
+
+    private int gbfield;
+
+    private int afield;
+
+    private Type gbfieldType;
+
+    Aggregator.Op what;
+
+    private Map<Field, Integer> result;
+
+    private Map<Field, Integer> avgHelper;
+
+    private Field[] traverseHelper;
 
     /**
      * Aggregate constructor
@@ -26,7 +50,14 @@ public class IntegerAggregator implements Aggregator {
      */
 
     public IntegerAggregator(int gbfield, Type gbfieldtype, int afield, Op what) {
-        // some code goes here
+        this.afield = afield;
+        this.gbfieldType = gbfieldtype;
+        this.gbfield = gbfield;
+        this.what = what;
+        result = new HashMap();
+        if(what == Op.AVG){
+            avgHelper = new HashMap();
+        }
     }
 
     /**
@@ -37,7 +68,40 @@ public class IntegerAggregator implements Aggregator {
      *            the Tuple containing an aggregate field and a group-by field
      */
     public void mergeTupleIntoGroup(Tuple tup) {
-        // some code goes here
+        if(gbfield == NO_GROUPING){
+
+        }
+        Field gbfieldValue =  tup.getField(gbfield);
+        IntField aFieldValue = (IntField)tup.getField(afield);
+        if(result.containsKey(gbfieldValue)){
+            int oldValue = result.get(gbfieldValue);
+            if(what == Op.COUNT){
+                result.put(gbfieldValue, oldValue + 1);
+            }else if(what == Op.SUM){
+                result.put(gbfieldValue, oldValue + aFieldValue.getValue());
+            }else if(what == Op.AVG){
+                int oldCount = avgHelper.get(gbfieldValue);
+                result.put(gbfieldValue, (oldValue * oldCount + aFieldValue.getValue())/(oldCount + 1));
+                avgHelper.put(gbfieldValue, oldCount + 1);
+            }else if(what == Op.MIN){
+                result.put(gbfieldValue, Math.min(oldValue, aFieldValue.getValue()));
+            }else if(what == Op.MAX){
+                result.put(gbfieldValue, Math.max(oldValue, aFieldValue.getValue()));
+            }
+        }else{
+            if(what == Op.COUNT){
+                result.put(gbfieldValue, 1);
+            }else if(what == Op.SUM){
+                result.put(gbfieldValue, aFieldValue.getValue());
+            }else if(what == Op.AVG){
+                result.put(gbfieldValue,  aFieldValue.getValue());
+                avgHelper.put(gbfieldValue, 1);
+            }else if(what == Op.MIN){
+                result.put(gbfieldValue, aFieldValue.getValue());
+            }else if(what == Op.MAX){
+                result.put(gbfieldValue, aFieldValue.getValue());
+            }
+        }
     }
 
     /**
@@ -49,9 +113,68 @@ public class IntegerAggregator implements Aggregator {
      *         the constructor.
      */
     public OpIterator iterator() {
-        // some code goes here
-        throw new
-        UnsupportedOperationException("please implement me for lab2");
+        traverseHelper = result.keySet().toArray(new Field[0]);
+
+        return new OpIterator() {
+            int i = 0;
+            boolean isOpen = false;
+            TupleDesc td = new TupleDesc(new Type[]{gbfieldType, Type.INT_TYPE});
+
+            @Override
+            public void open() throws DbException, TransactionAbortedException {
+                isOpen = true;
+            }
+
+            @Override
+            public boolean hasNext() throws DbException, TransactionAbortedException {
+                if(!isOpen){
+                    throw new IllegalStateException();
+                }
+                return i < result.size();
+            }
+
+            @Override
+            public Tuple next() throws DbException, TransactionAbortedException, NoSuchElementException {
+                if(!isOpen){
+                    throw new IllegalStateException();
+                }
+                if(i >= traverseHelper.length){
+                    throw new NoSuchElementException();
+                }
+                int aggregateValue = result.get(traverseHelper[i]);
+                Tuple ans = null;
+                if(gbfield == NO_GROUPING){
+
+                }else{
+                    ans = new Tuple(td);
+                    ans.setField(0, traverseHelper[i] );
+                    ans.setField(1,  new IntField(aggregateValue));
+                }
+                i++;
+                return ans;
+            }
+
+            @Override
+            public void rewind() throws DbException, TransactionAbortedException {
+                if(!isOpen){
+                    throw new IllegalStateException();
+                }
+                i = 0;
+            }
+
+            @Override
+            public TupleDesc getTupleDesc() {
+                return null;
+            }
+
+            @Override
+            public void close() {
+                if(!isOpen){
+                    throw new IllegalStateException();
+                }
+                isOpen = false;
+            }
+        };
     }
 
 }
