@@ -5,7 +5,9 @@ import simpledb.common.DbException;
 import simpledb.common.Debug;
 import simpledb.common.Catalog;
 import simpledb.transaction.TransactionId;
+import sun.security.ssl.Record;
 
+import javax.xml.crypto.Data;
 import java.util.*;
 import java.io.*;
 
@@ -27,6 +29,9 @@ public class HeapPage implements Page {
 
     byte[] oldData;
     private final Byte oldDataLock= (byte) 0;
+
+    private boolean dirty = false;
+    private TransactionId tid = null;
 
     /**
      * Create a HeapPage from a set of bytes of data read from disk.
@@ -245,6 +250,34 @@ public class HeapPage implements Page {
     public void deleteTuple(Tuple t) throws DbException {
         // some code goes here
         // not necessary for lab1
+        int tupleNo = t.getRecordId().getTupleNumber();
+        if(!t.getRecordId().getPageId().equals(pid) ||
+            t.getRecordId().getTupleNumber() >= numSlots || !isSlotUsed(tupleNo)){
+            throw new DbException("tuple is not on this page, or tuple slot is already empty");
+        }
+        markSlotUsed(tupleNo, false);
+    }
+
+    /**
+     * get one empty slot within this page
+     *
+     * @return the empty slot index, or -1 if there is not any.
+     */
+    public int getEmptySlotNumber(){
+        int slotNo = -1;
+        for(int i = 0 ; i < header.length; i++){
+            if((int)header[i] == 255){
+                continue;
+            }else{
+                for(int j = 0; j < 8; j++){
+                    if(  (header[i] & (1 << j))== 0){
+                        slotNo = i*8 + j;
+                        break;
+                    }
+                }
+            }
+        }
+        return slotNo;
     }
 
     /**
@@ -257,6 +290,33 @@ public class HeapPage implements Page {
     public void insertTuple(Tuple t) throws DbException {
         // some code goes here
         // not necessary for lab1
+//        HeapPage targetPage = this;
+//        HeapPageId targetPageId = pid;
+//        if(getNumEmptySlots() <= 0){
+//            try{
+//                HeapFile heapFile = (HeapFile) Database.getCatalog().getDatabaseFile(pid.getTableId());
+//                targetPageId = new HeapPageId(pid.getTableId(), heapFile.numPages() + 1);
+//                targetPage = new HeapPage(targetPageId, createEmptyPageData());
+//
+//            } catch (IOException e) {
+//                e.printStackTrace();
+//            }
+//        }
+//        int slotNo = targetPage.getEmptySlotNumber();
+//        targetPage.tuples[slotNo] = t;
+//        RecordId recordId = new RecordId(targetPageId, slotNo);
+//        t.setRecordId(recordId);
+//
+//        targetPage.markSlotUsed(slotNo, true);
+//        targetPage.getPageData();
+        if(getNumEmptySlots() <= 0){
+            throw new DbException("the page is full");
+        }
+        int slotNo = getEmptySlotNumber();
+        RecordId recordId = new RecordId(pid, slotNo);
+        t.setRecordId(recordId);
+        tuples[slotNo] = t;
+        markSlotUsed(slotNo, true);
     }
 
     /**
@@ -266,6 +326,8 @@ public class HeapPage implements Page {
     public void markDirty(boolean dirty, TransactionId tid) {
         // some code goes here
 	// not necessary for lab1
+        this.dirty = dirty;
+        this.tid = tid;
     }
 
     /**
@@ -274,7 +336,10 @@ public class HeapPage implements Page {
     public TransactionId isDirty() {
         // some code goes here
 	// Not necessary for lab1
-        return null;      
+        if(dirty){
+            return tid;
+        }
+        return null;
     }
 
     /**
@@ -317,6 +382,13 @@ public class HeapPage implements Page {
     private void markSlotUsed(int i, boolean value) {
         // some code goes here
         // not necessary for lab1
+        int byteNo = i/8;
+        int bitNo = i % 8;
+        if(value){
+            header[byteNo] |= (1 << bitNo);
+        }else{
+            header[byteNo] &= (~(1 << bitNo));
+        }
     }
 
     /**
