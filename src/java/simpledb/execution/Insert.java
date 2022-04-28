@@ -86,6 +86,8 @@ public class Insert extends Operator {
     public void rewind() throws DbException, TransactionAbortedException {
         // some code goes here
         children[0].rewind();
+        isFinished = false;
+        count = 0;
     }
 
     /**
@@ -103,6 +105,9 @@ public class Insert extends Operator {
      */
     protected Tuple fetchNext() throws TransactionAbortedException, DbException {
         // some code goes here
+        if(isFinished){
+            return null;
+        }
         Tuple tuple = new Tuple(getTupleDesc());
         tuple.setField(0, new IntField(count));
         return tuple;
@@ -118,5 +123,14 @@ public class Insert extends Operator {
     public void setChildren(OpIterator[] children) {
         // some code goes here
         this.children = children;
+    }
+
+    public Tuple next() throws DbException, TransactionAbortedException{
+        if(isFinished){
+            return null;
+        }
+        Tuple tuple = super.next();
+        isFinished = true;
+        return tuple;
     }
 }
