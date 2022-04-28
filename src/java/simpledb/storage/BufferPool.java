@@ -4,10 +4,12 @@ import simpledb.common.*;
 import simpledb.transaction.TransactionAbortedException;
 import simpledb.transaction.TransactionId;
 
+import javax.xml.crypto.Data;
 import java.io.*;
 
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ThreadLocalRandom;
 
 /**
  * BufferPool manages the reading and writing of pages into memory from
@@ -34,6 +36,8 @@ public class BufferPool {
     private Map<PageId, Page> pages = new HashMap();
 
     private int numPages;
+
+    private List<Page> dirtypages = new LinkedList();
 
     /**
      * Creates a BufferPool that caches up to numPages pages.
@@ -80,7 +84,7 @@ public class BufferPool {
             return pages.get(pid);
         }
         if(pages.size() >= numPages){
-            throw new DbException("number of pages exceed limit");
+            evictPage();
         }
         try{
             page = Database.getCatalog().getDatabaseFile(pid.getTableId()).readPage(pid);
@@ -156,6 +160,7 @@ public class BufferPool {
         // some code goes here
         DbFile heapFile = Database.getCatalog().getDatabaseFile(tableId);
         List<Page> dirtyPages =  heapFile.insertTuple(tid, t);
+        this.dirtypages.addAll(dirtyPages);
         for(Page page : dirtyPages){
             pages.put(page.getId(), page);
         }
@@ -180,6 +185,7 @@ public class BufferPool {
         PageId targetPageId = t.getRecordId().getPageId();
         HeapFile heapFile = (HeapFile)Database.getCatalog().getDatabaseFile(targetPageId.getTableId());
         List<Page> dirtyPages =  heapFile.deleteTuple(tid, t);
+        this.dirtypages.addAll(dirtyPages);
         for(Page page : dirtyPages){
             pages.put(page.getId(), page);
         }
@@ -193,7 +199,11 @@ public class BufferPool {
     public synchronized void flushAllPages() throws IOException {
         // some code goes here
         // not necessary for lab1
-
+        for(Page page : dirtypages){
+            flushPage(page.getId());
+            page.markDirty(false, new TransactionId());
+        }
+        dirtypages.clear();
     }
 
     /** Remove the specific page id from the buffer pool.
@@ -206,7 +216,10 @@ public class BufferPool {
     */
     public synchronized void discardPage(PageId pid) {
         // some code goes here
-        // not necessary for lab1
+        if(!pages.containsKey(pid)){
+            return;
+        }
+        pages.remove(pid);
     }
 
     /**
@@ -215,7 +228,11 @@ public class BufferPool {
      */
     private synchronized  void flushPage(PageId pid) throws IOException {
         // some code goes here
-        // not necessary for lab1
+        if(!pages.containsKey(pid)){
+            return;
+        }
+        HeapFile heapFile = (HeapFile) Database.getCatalog().getDatabaseFile(pid.getTableId());
+        heapFile.writePage(pages.get(pid));
     }
 
     /** Write all pages of the specified transaction to disk.
@@ -232,6 +249,22 @@ public class BufferPool {
     private synchronized  void evictPage() throws DbException {
         // some code goes here
         // not necessary for lab1
+        int selected = ThreadLocalRandom.current().nextInt(0, numPages);
+        for(Map.Entry<PageId, Page> entry : pages.entrySet()){
+            if(selected == 0){
+                Page page = entry.getValue();
+                if(page.isDirty() != null){
+                    try{
+                        flushPage(page.getId());
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                    }
+                }
+                pages.remove(page.getId());
+                return;
+            }
+            selected--;
+        }
     }
 
 }
