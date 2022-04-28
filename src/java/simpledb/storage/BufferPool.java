@@ -6,9 +6,7 @@ import simpledb.transaction.TransactionId;
 
 import java.io.*;
 
-import java.util.HashMap;
-import java.util.Map;
-import java.util.NoSuchElementException;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
@@ -156,7 +154,11 @@ public class BufferPool {
     public void insertTuple(TransactionId tid, int tableId, Tuple t)
         throws DbException, IOException, TransactionAbortedException {
         // some code goes here
-        // not necessary for lab1
+        DbFile heapFile = Database.getCatalog().getDatabaseFile(tableId);
+        List<Page> dirtyPages =  heapFile.insertTuple(tid, t);
+        for(Page page : dirtyPages){
+            pages.put(page.getId(), page);
+        }
     }
 
     /**
@@ -175,7 +177,12 @@ public class BufferPool {
     public  void deleteTuple(TransactionId tid, Tuple t)
         throws DbException, IOException, TransactionAbortedException {
         // some code goes here
-        // not necessary for lab1
+        PageId targetPageId = t.getRecordId().getPageId();
+        HeapFile heapFile = (HeapFile)Database.getCatalog().getDatabaseFile(targetPageId.getTableId());
+        List<Page> dirtyPages =  heapFile.deleteTuple(tid, t);
+        for(Page page : dirtyPages){
+            pages.put(page.getId(), page);
+        }
     }
 
     /**
