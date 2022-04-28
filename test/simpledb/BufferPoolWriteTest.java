@@ -1,9 +1,6 @@
 package simpledb;
 
-import java.io.BufferedOutputStream;
-import java.io.File;
-import java.io.FileOutputStream;
-import java.io.IOException;
+import java.io.*;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -50,6 +47,22 @@ public class BufferPoolWriteTest extends TestUtil.CreateHeapFile {
     					HeapPage.createEmptyPageData());
     	        p.insertTuple(t);
     			dirtypages.add(p);
+
+				/**
+				 *   code below is not part of original test code, was added during debuging
+				 *
+				 *
+				try{
+					RandomAccessFile file = new RandomAccessFile(super.getFile(), "rw");
+					file.seek(i * BufferPool.getPageSize());
+					byte[] content = p.getPageData();
+					file.write(content, 0, BufferPool.getPageSize() );
+				} catch (FileNotFoundException e) {
+					e.printStackTrace();
+				} catch (IOException e) {
+					e.printStackTrace();
+				}
+				 */
     		}
     		return dirtypages;
     	}
