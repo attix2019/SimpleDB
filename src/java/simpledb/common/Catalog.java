@@ -3,6 +3,7 @@ package simpledb.common;
 import simpledb.common.Type;
 import simpledb.storage.DbFile;
 import simpledb.storage.HeapFile;
+import simpledb.storage.PageId;
 import simpledb.storage.TupleDesc;
 
 import java.io.BufferedReader;
@@ -31,6 +32,8 @@ public class Catalog {
 
     private Map<Integer, DbFile> id2DbFile = new HashMap();
 
+    private List<Integer> tableIds = new LinkedList();
+
     /**
      * Constructor.
      * Creates a new, empty catalog.
@@ -54,6 +57,7 @@ public class Catalog {
         id2Name.put(id, name);
         id2PrimaryKey.put(id, pkeyField);
         name2Id.put(name, id);
+        tableIds.add(id);
     }
 
     public void addTable(DbFile file, String name) {
@@ -117,7 +121,23 @@ public class Catalog {
 
     public Iterator<Integer> tableIdIterator() {
         // some code goes here
-        return null;
+        return new Iterator<Integer>() {
+
+            public int idx = 0;
+
+            @Override
+            public boolean hasNext() {
+                return idx < tableIds.size();
+            }
+
+            @Override
+            public Integer next() {
+                if(!hasNext()){
+                    throw  new NoSuchElementException("element not found");
+                }
+                return tableIds.get(idx++);
+            }
+        };
     }
 
     public String getTableName(int id) {
@@ -130,6 +150,11 @@ public class Catalog {
     /** Delete all tables from the catalog */
     public void clear() {
         // some code goes here
+        tableIds.clear();
+        id2Name.clear();
+        name2Id.clear();
+        id2PrimaryKey.clear();
+        id2DbFile.clear();
     }
     
     /**
