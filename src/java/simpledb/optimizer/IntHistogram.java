@@ -85,7 +85,7 @@ public class IntHistogram {
             int dis = v - min;
             int pos = dis/width;
             int w = (pos == bucketNum-1 && (max-min+1) % bucketNum != 0)? this.lastBinWidth: this.width;
-            eqfrac =  (double)1/w * bucketCount[pos]/total;
+            eqfrac =  (double)bucketCount[pos]/(total * w);
 
             for(int i = pos + 1; i < bucketNum; i++){
                 gt += ((double)bucketCount[i]/total);
