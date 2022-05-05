@@ -16,8 +16,8 @@ import javax.swing.tree.*;
  * logical plan.
  */
 public class JoinOptimizer {
-    final LogicalPlan p;
-    final List<LogicalJoinNode> joins;
+    public final LogicalPlan p;
+    public final List<LogicalJoinNode> joins;
 
     /**
      * Constructor
@@ -246,9 +246,29 @@ public class JoinOptimizer {
             Map<String, TableStats> stats,
             Map<String, Double> filterSelectivities, boolean explain)
             throws ParsingException {
-
-        // some code goes here
-        //Replace the following
+        PlanCache planCache = new PlanCache();
+        for(int i = 1; i <= joins.size(); i++ ){
+            Set<Set<LogicalJoinNode>> sets = enumerateSubsets(joins, i);
+            for(Set<LogicalJoinNode> set : sets){
+                CostCard bestCostCard = null ;
+                double bestCostSoFar = Double.MAX_VALUE;
+                for(LogicalJoinNode logicalJoinNode : set){
+                    CostCard costCard = computeCostAndCardOfSubplan(stats, filterSelectivities,
+                            logicalJoinNode, set, bestCostSoFar, planCache );
+                    if(costCard != null){
+                            bestCostSoFar = costCard.cost;
+                            bestCostCard = costCard;
+                    }
+                }
+                if( bestCostCard!= null){
+                    planCache.addPlan(set, bestCostCard.cost, bestCostCard.card, bestCostCard.plan);
+                }
+            }
+        }
+        List<LogicalJoinNode> ret = planCache.getOrder(new HashSet(joins));
+        if(ret != null){
+            return ret;
+        }
         return joins;
     }
 
