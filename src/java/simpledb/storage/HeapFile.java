@@ -23,6 +23,7 @@ public class HeapFile implements DbFile {
     private File file;
     private int id;
     private TupleDesc tupleDesc;
+    private int totalPageNumber;
 
     /**
      * Constructs a heap file backed by the specified file.
@@ -35,6 +36,7 @@ public class HeapFile implements DbFile {
         this.file = f;
         this.tupleDesc = td;
         id = f.getAbsoluteFile().hashCode();
+        this.totalPageNumber = numPagesHelper();
     }
 
     /**
@@ -94,12 +96,17 @@ public class HeapFile implements DbFile {
         randomAccessFile.seek( pageSize * page.getId().getPageNumber());
         byte[] pageContent = page.getPageData();
         randomAccessFile.write(pageContent, 0, pageSize);
+        totalPageNumber = numPagesHelper();
     }
 
     /**
      * Returns the number of pages in this HeapFile.
      */
     public int numPages() {
+        return totalPageNumber;
+    }
+
+    public int numPagesHelper(){
         int size = (int)this.file.length();
         return (int)Math.ceil((double) size/BufferPool.getPageSize());
     }
@@ -138,6 +145,7 @@ public class HeapFile implements DbFile {
             page.insertTuple(t);
             page.markDirty(true, tid);
             modifiedPages.add(page);
+            totalPageNumber = numPagesHelper();
         }
 
 //        try{
